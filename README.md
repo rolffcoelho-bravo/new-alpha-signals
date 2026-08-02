@@ -90,10 +90,22 @@ graph TD
     style J fill:#e74c3c,stroke:#922b21,stroke-width:2px,color:#fff
 ```
 
-### Script Directory Reference
+### Script Directory Reference & Visual Flows
 
 #### A. Live Real-World Data Ingestor (`examples/real_world_data.py`)
 Demonstrates how to run our regularized matrix estimator on live financial markets. It dynamically downloads daily adjusted closing prices for **SPY** (market proxy), **AAPL**, **MSFT**, **QQQ**, and **AMZN** from Yahoo Finance, projects returns to be SPY-orthogonal, constructs rolling signals, and outputs SVD modes and factor loadings.
+
+```mermaid
+flowchart LR
+    In1[yf.download: AAPL, MSFT, QQQ, AMZN, SPY] --> Proc1[Compute Daily Returns]
+    Proc1 --> Proc2[Estimate time-varying betas relative to SPY]
+    Proc2 --> Proc3[Project returns onto Orthogonal Complement]
+    Proc3 --> Sig[Construct rolling Mom21, Rev1, Vol21 signals]
+    Sig --> Std[Cross-sectional z-score standardization]
+    Std --> Fit[Fit Dynamic Alpha Operator via PGD]
+    Fit --> Out[Output: Singular Values & Signal Loadings]
+```
+
 ```bash
 python examples/real_world_data.py
 ```
@@ -102,6 +114,22 @@ python examples/real_world_data.py
 Implements lifecycle management for systematic operators. It establishes a local model registry (storing fitted parameters as NPZ/JSON), orchestrates rolling fits, and integrates:
 *   **Subspace Drift Audits:** Compares right singular vectors of production models against new fits using principal angles. Raises a warning alert if overlap falls below 80%, triggering model re-estimation.
 *   **Performance Decay Monitors:** Tracks daily prediction MSE and alerts when out-of-sample accuracy degrades.
+
+```mermaid
+flowchart TD
+    Init[Fitted Operator A_hat, S, V] --> Reg[Register run: weights.npz & metadata.json]
+    Reg --> RegFolder[(Local registry/run_ID/)]
+    RegFolder --> Monitor{Model Health Monitor}
+    
+    Monitor -->|Audit Subspace Drift| Drift{Subspace Overlap < 80%?}
+    Drift -->|Yes| AlertDrift[Drift Alert] --> Refit[Trigger Auto-Refit Pipeline]
+    Drift -->|No| SafeDrift[Subspace Stable] --> Retain[Retain Active Model]
+    
+    Monitor -->|Audit Prediction Accuracy| Perf{OOS MSE > 1.5x Baseline?}
+    Perf -->|Yes| AlertPerf[MSE Performance Alert] --> Action[Risk-Downscale/Suspend Strategy]
+    Perf -->|No| SafePerf[Accuracy within bounds]
+```
+
 ```bash
 python examples/quant_mlops.py
 ```
@@ -110,12 +138,38 @@ python examples/quant_mlops.py
 Customizes the optimization loss function of the operator using Proximal Gradient Descent (PGD) to match specific institutional constraints:
 *   **Hedge Funds (Capacity-Centric):** Adds a quadratic turnover cost penalty ($\lambda_{TC}$) relative to previous weights to favor long-term capacity signals (Mom252) and suppress high-turnover trading.
 *   **Prop-Trading/HFT (Speed-Centric):** Enforces a short-term volatility constraint to isolate high-frequency reversal signals (Rev1) under zero capacity penalties.
+
+```mermaid
+flowchart TD
+    Data[Return-Signal Matrices] --> Split{Quant Profile Selection}
+    
+    Split -->|Hedge Fund Capacity| HF[Add L1 Turnover Penalty: lambda_tc * |A - A_prev|]
+    Split -->|Prop-Desk/HFT Speed| HFT[Add High-Frequency Velocity constraint]
+    
+    HF --> Estimator[PGD Operator Optimization]
+    HFT --> Estimator
+    
+    Estimator --> OutHF[Prunes short-term signals; allocates to Mom252/Vol252]
+    Estimator --> OutHFT[Maximizes speed; allocates aggressively to Rev1]
+```
+
 ```bash
 python examples/industry_profiles.py
 ```
 
 #### D. ML & GenAI Automated Tuning (`examples/ai_tuning.py`)
 Simulates an AI Research Partner feedback loop. It runs a 36-node validation sweep over the hyperparameter loss grid ($\lambda_*$, $\lambda_{grp}$) and generates a structured, LLM-style **Research Agent Recommendation Report** proposing optimal parameters for production.
+
+```mermaid
+flowchart TD
+    Grid[Define search grid: lambda_star & lambda_grp] --> Sweep[36-node validation sweep over Loss Landscape]
+    Sweep --> Eval[Evaluate Validation Sharpe Ratio & Utility]
+    Eval --> Select[Select parameter set with max Sharpe & zero collapse]
+    Select --> Parse[Research Agent parses performance metadata]
+    Parse --> Gen[Compile structured GenAI Recommendation Report]
+    Gen --> Out[Export Report to terminal & CSV log]
+```
+
 ```bash
 python examples/ai_tuning.py
 ```
