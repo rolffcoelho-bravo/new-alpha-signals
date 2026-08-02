@@ -1,10 +1,12 @@
-# Local research diaries and blueprints (hidden/private files)
+# Local research diaries, blueprints, and manuscripts (hidden/private files)
 Memory.md
 Findings.md
 Transcription.md
 Reproducibility.md
 Beyond_Backtesting_Alpha_Signals_Blueprint.md
 RESEARCH Note.txt
+mathematical_novelty.tex
+Alpha_Signals_manuscript.tex
 
 # Python cache and environment files
 __pycache__/
@@ -18,3 +20,6 @@ data/
 code/data/
 output/tables/
 output/figures/
+
+# Critical source code (kept hidden until finalization)
+code/
