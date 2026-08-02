@@ -172,7 +172,7 @@ with mcol2:
             Current Overlap: {overlap:.4f} &lt; 0.80<br>
             <em>Triggering automated refit pipeline...</em>
         </div>
-        """, unsafe_allowed_html=True)
+        """, unsafe_allow_html=True)
         # Simulate quick refit delay
         time.sleep(0.3)
     else:
@@ -182,7 +182,7 @@ with mcol2:
             Current Overlap: {overlap:.4f} &ge; 0.80<br>
             <em>Operator remains locked in production.</em>
         </div>
-        """, unsafe_allowed_html=True)
+        """, unsafe_allow_html=True)
         
     # Performance check card
     good_performance = (st.session_state.cum_returns["Dynamic_Alpha"][-1] >= st.session_state.cum_returns["OLS"][-1])
@@ -192,14 +192,14 @@ with mcol2:
             <strong>✅ [PERFORMANCE CHECK] Net Utility Stable</strong><br>
             Dynamic Alpha Operator continues to outperform standard baselines.
         </div>
-        """, unsafe_allowed_html=True)
+        """, unsafe_allow_html=True)
     else:
         st.markdown("""
         <div class="alert-card alert-warn">
             <strong>⚠️ [PERFORMANCE ALERT] Sharpe Decay</strong><br>
             Operator performance matches baseline. Reviewing regularization bounds.
         </div>
-        """, unsafe_allowed_html=True)
+        """, unsafe_allow_html=True)
         
     st.subheader("🛡️ Signal Loading Attribution")
     # Dynamic signal loadings based on selected profile and sliders
