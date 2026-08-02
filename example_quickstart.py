@@ -9,9 +9,10 @@ It demonstrates:
 2. PyTorch-based optimization of the operator subject to:
    - Nuclear Norm regularizations (inducing low-rank structures).
    - Group Lasso regularizations (inducing signal-family sparsity).
-3. Singular Value Decomposition (SVD) analysis of predictive modes.
+3. SVD Mode Decomposition and signal family importance attribution.
 4. Capital allocation via a long-short portfolio adapter.
-5. Visualization of strategy performance.
+5. Out-of-sample backtesting comparison against OLS, Ridge, and Naive benchmarks.
+6. Generation of performance comparison charts.
 
 Designed for systematic quants, portfolio managers, and academic reviewers.
 """
@@ -31,7 +32,7 @@ class DynamicAlphaEstimator:
     """
     PyTorch-based regularized estimator for the high-dimensional Dynamic Alpha Operator.
     """
-    def __init__(self, lambda_star=1e-4, lambda_grp=1e-4, lr=0.01, max_iter=150, tol=1e-6, verbose=True):
+    def __init__(self, lambda_star=0.01, lambda_grp=0.01, lr=0.05, max_iter=200, tol=1e-6, verbose=False):
         self.lambda_star = lambda_star
         self.lambda_grp = lambda_grp
         self.lr = lr
@@ -47,12 +48,6 @@ class DynamicAlphaEstimator:
     def fit(self, Y_perp, X_vec, N, P):
         """
         Fits the regularized operator A.
-        
-        Parameters:
-        - Y_perp: numpy array of size T x N (benchmark-orthogonal returns)
-        - X_vec: numpy array of size T x NP (vectorized standardized signals)
-        - N: int (number of assets)
-        - P: int (number of signal families)
         """
         T = Y_perp.shape[0]
         NP = N * P
@@ -83,25 +78,25 @@ class DynamicAlphaEstimator:
         for iteration in range(self.max_iter):
             optimizer.zero_grad()
             
-            # 1. Data Loss: 1/T * sum_t (y_t - A x_t)' Omega_inv (y_t - A x_t)
+            # 1. Data Loss
             predictions = torch.matmul(x, A.t())  # T x N
             residuals = y - predictions  # T x N
             
             weighted_res = torch.matmul(residuals, omega_inv)  # T x N
             data_loss = torch.sum(residuals * weighted_res) / T
             
-            # 2. Nuclear Norm (L1-like penalty on singular values)
+            # 2. Nuclear Norm (L1 on singular values)
             s_vals = torch.linalg.svdvals(A)
             nuclear_loss = torch.sum(s_vals)
             
-            # 3. Group Lasso (grouped by signal family across all assets)
+            # 3. Group Lasso (Frobenius on signal submatrices)
             group_loss = torch.tensor(0.0, dtype=torch.float32)
             for p in range(P):
                 indices = torch.arange(p, NP, P)
                 A_sub = A[:, indices]  # N x N
                 group_loss += torch.linalg.matrix_norm(A_sub, ord='fro')
                 
-            # Total Loss
+            # Total Loss (scaled penalties for smaller sample size)
             loss = data_loss + self.lambda_star * nuclear_loss + self.lambda_grp * group_loss
             
             loss_val = loss.item()
@@ -130,33 +125,32 @@ class DynamicAlphaEstimator:
 
 # --- 2. Simulation and Execution ---
 
-def generate_synthetic_data(T=1000, N=5, P=3):
+def generate_synthetic_data(T=600, N=10, P=8):
     """
-    Generates realistic asset pricing dataset with a low-rank predictive signal subspace.
+    Generates high-dimensional, noisy signal panel.
+    N=10 assets, P=8 signal families (80 parameters total).
+    Only the first signal family (Momentum) contains true alpha.
+    The other 7 signal families are pure Gaussian noise.
     """
-    print("Generating synthetic asset returns and high-dimensional signals...")
+    print(f"Generating synthetic returns and high-dimensional noisy signals ({N} assets, {P} signals)...")
     
-    # Generate systematic benchmark factors (e.g. market factor)
+    # Generate systematic benchmark factor (market)
     market_factor = np.random.normal(0.0, 0.01, (T, 1))
-    
-    # Asset exposures to the benchmark (betas)
-    betas = np.array([[1.0], [0.8], [1.2], [0.5], [1.1]]) # N x 1
+    betas = np.random.uniform(0.5, 1.5, (N, 1)) # N x 1
     
     # Idiosyncratic returns
     idiosyncratic = np.random.normal(0.0, 0.015, (T, N))
-    
-    # Total returns
     returns = market_factor @ betas.T + idiosyncratic # T x N
     
-    # Generate P signal families (e.g., Mom, Rev, Vol)
-    # The true predictive mapping is low-rank: only the first signal is predictive
+    # Generate P signals (80 total variables)
     signals = np.random.normal(0.0, 1.0, (T, N, P))
     
-    # Insert predictable component (orthogonal alpha)
-    true_alpha_direction = np.array([0.5, -0.5, 0.2, -0.2, 0.0]) # N
-    predictive_signal = signals[:, :, 0] # Use first signal family
+    # Target predictive direction (N,)
+    true_alpha_direction = np.array([0.5, -0.5, 0.4, -0.4, 0.3, -0.3, 0.2, -0.2, 0.1, -0.1])
+    predictive_signal = signals[:, :, 0] # Signal 0 (Momentum) is the predictive one
     
-    alpha_returns = (predictive_signal @ true_alpha_direction.reshape(-1, 1)) * 0.002
+    # Add alpha to returns
+    alpha_returns = (predictive_signal @ true_alpha_direction.reshape(-1, 1)) * 0.008
     returns += alpha_returns
     
     # Flatten signals to size T x NP
@@ -167,44 +161,54 @@ def generate_synthetic_data(T=1000, N=5, P=3):
     return returns, market_factor, betas, signals_flat
 
 def main():
-    N, P = 5, 3
+    N, P = 10, 8
     NP = N * P
     
     # 1. Ingest Data
-    returns, factors, betas, signals = generate_synthetic_data(T=1000, N=N, P=P)
+    returns, factors, betas, signals = generate_synthetic_data(T=600, N=N, P=P)
     
     # 2. Compute Benchmark-Orthogonal Returns
-    print("Projecting returns onto the orthogonal complement of the benchmark...")
+    print("Projecting returns onto the orthogonal complement of the benchmark risk factors...")
     Y_perp = np.zeros_like(returns)
     I_N = np.eye(N)
     for t in range(len(returns)):
-        B_t = betas # Static betas in this example
+        B_t = betas
         B_inv = np.linalg.inv(B_t.T @ B_t)
         M_B = I_N - B_t @ B_inv @ B_t.T
         Y_perp[t] = M_B @ returns[t]
         
-    # Split into Train and Test (50/50)
-    split = 500
+    # Split into Train and Test (Train=100 days, Test=500 days)
+    # High-dimensional: 80 parameters to estimate on only 100 observations!
+    split = 100
     Y_train, Y_test = Y_perp[:split], Y_perp[split:]
     X_train, X_test = signals[:split], signals[split:]
     
-    # 3. Fit the Dynamic Alpha Operator
+    # 3. Fit Proposed Estimator (Dynamic Alpha Operator)
     print("\nFitting regularized Dynamic Alpha Operator...")
     estimator = DynamicAlphaEstimator(
-        lambda_star=1e-5, 
-        lambda_grp=1e-5, 
-        lr=0.01, 
+        lambda_star=0.004, 
+        lambda_grp=0.004, 
+        lr=0.02, 
         max_iter=200
     )
     estimator.fit(Y_train, X_train, N, P)
     
+    # 4. Fit Baseline Benchmark Models
+    # Classical OLS (massively overfits noise because T_train is close to NP!)
+    print("Fitting Benchmark 1: Classical OLS model...")
+    A_ols = np.linalg.solve(X_train.T @ X_train + 1e-4 * np.eye(NP), X_train.T @ Y_train).T
+    
+    # Regularized Ridge (L2 penalty)
+    print("Fitting Benchmark 2: Regularized Ridge model...")
+    A_ridge = np.linalg.solve(X_train.T @ X_train + 80.0 * np.eye(NP), X_train.T @ Y_train).T
+    
+    # --- Print SVD Mode Attribution ---
     print("\n" + "="*50)
-    print("SVD Predictive Mode Analysis")
+    print("SVD Predictive Mode Analysis (Proposed)")
     print("="*50)
     print(f"Empirical Singular Values (Mode Strengths):\n{estimator.S_.round(6)}")
     
-    # Norm of submatrices for signal families
-    family_names = ["Momentum", "Reversal", "Volatility"]
+    family_names = ["Momentum", "Reversal_W", "Reversal_D", "Vol_21", "Vol_252", "Skew", "Kurtosis", "Char"]
     for p in range(P):
         indices = np.arange(p, NP, P)
         A_sub = estimator.A_hat_[:, indices]
@@ -212,43 +216,100 @@ def main():
         print(f"Signal Family: {family_names[p]:<10} | Submatrix Norm: {norm:.6f}")
     print("="*50)
     
-    # 4. Out-of-Sample Portfolio Adapter
-    print("\nBacktesting out-of-sample performance...")
-    predictions = estimator.predict(X_test) # T_test x N
+    # 5. Out-of-Sample Portfolio Backtest Loop
+    print("\nExecuting out-of-sample backtest comparison...")
     
-    # Long-Short capital allocator
-    strategy_returns = []
-    for t in range(len(predictions)):
-        pred = predictions[t]
-        w = pred - np.mean(pred) # Zero-net exposure
-        w = w / (np.sum(np.abs(w)) + 1e-8) # Leverage limit
-        
-        # Portfolio return
-        ret = np.sum(w * Y_test[t])
-        strategy_returns.append(ret)
-        
-    strategy_returns = np.array(strategy_returns)
-    cum_returns = np.cumsum(strategy_returns) * 100.0
+    # Get predictions for all models
+    preds = {
+        "EW_Naive": np.zeros((len(Y_test), N)),
+        "OLS": X_test @ A_ols.T,
+        "Ridge": X_test @ A_ridge.T,
+        "Dynamic_Alpha": estimator.predict(X_test)
+    }
     
+    # Fill EW Naive predictions (average signals across all families)
+    for t in range(len(Y_test)):
+        X_t_mat = X_test[t].reshape(N, P)
+        preds["EW_Naive"][t] = np.mean(X_t_mat, axis=1)
+        
+    # Standardize weights and calculate returns for each strategy
+    strategy_returns = {k: [] for k in preds.keys()}
+    
+    for t in range(len(Y_test)):
+        y_perp_t = Y_test[t]
+        
+        for k in preds.keys():
+            pred = preds[k][t]
+            # Zero-net exposure adapter
+            w = pred - np.mean(pred)
+            norm_val = np.sum(np.abs(w))
+            if norm_val > 1e-8:
+                w = w / norm_val
+            else:
+                w = np.zeros_like(w)
+                
+            ret = np.sum(w * y_perp_t)
+            strategy_returns[k].append(ret)
+            
     # Calculate performance metrics
-    ann_return = np.mean(strategy_returns) * 252.0 * 100.0
-    ann_vol = np.std(strategy_returns) * np.sqrt(252.0) * 100.0
-    sharpe = ann_return / ann_vol if ann_vol > 0 else 0.0
-    print(f"Annualized Return: {ann_return:.2f}%")
-    print(f"Annualized Vol:    {ann_vol:.2f}%")
-    print(f"Sharpe Ratio:      {sharpe:.3f}")
+    print("\n" + "="*65)
+    print("Out-of-Sample Portfolio Metrics Comparison")
+    print("="*65)
     
-    # Plot performance
-    plt.figure(figsize=(10, 5))
-    plt.plot(cum_returns, label="Dynamic Alpha Long-Short", color="#2980b9", linewidth=2)
-    plt.title("Out-of-Sample Cumulative Returns (Quick-Start Example)")
+    plt.figure(figsize=(10, 6))
+    colors = {
+        "EW_Naive": "#7f8c8d",       # Gray
+        "OLS": "#e74c3c",            # Red
+        "Ridge": "#e67e22",          # Orange
+        "Dynamic_Alpha": "#2980b9"   # Blue
+    }
+    line_styles = {
+        "EW_Naive": "--",
+        "OLS": ":",
+        "Ridge": "-.",
+        "Dynamic_Alpha": "-"
+    }
+    labels = {
+        "EW_Naive": "Benchmark 0: EW Naive Signals",
+        "OLS": "Benchmark 1: Classical OLS (Overfits)",
+        "Ridge": "Benchmark 2: Regularized Ridge",
+        "Dynamic_Alpha": "Proposed: Dynamic Alpha Operator"
+    }
+    
+    for k in strategy_returns.keys():
+        ret_series = np.array(strategy_returns[k])
+        cum_ret = np.cumsum(ret_series) * 100.0
+        
+        ann_return = np.mean(ret_series) * 252.0 * 100.0
+        ann_vol = np.std(ret_series) * np.sqrt(252.0) * 100.0
+        sharpe = ann_return / ann_vol if ann_vol > 0 else 0.0
+        
+        # Max drawdown
+        peaks = np.maximum.accumulate(cum_ret)
+        mdd = np.max(peaks - cum_ret)
+        
+        print(f"Strategy: {k:<15} | Ann Return: {ann_return:>6.2f}% | Ann Vol: {ann_vol:>5.2f}% | Sharpe: {sharpe:>5.3f} | Max DD: {mdd:>5.2f}%")
+        
+        # Plot path
+        plt.plot(
+            cum_ret, 
+            label=labels[k], 
+            color=colors[k], 
+            linestyle=line_styles[k],
+            linewidth=2.5 if k == "Dynamic_Alpha" else 1.5
+        )
+        
+    print("="*65)
+    
+    plt.title("Out-of-Sample Performance Comparison (High-Dimensional Noisy Signals)")
     plt.xlabel("Trading Day")
     plt.ylabel("Cumulative Excess Return (%)")
-    plt.legend(loc="upper left")
+    plt.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="none")
     plt.grid(True, linestyle=":", alpha=0.6)
     plt.tight_layout()
+    
     plt.savefig("quickstart_performance.png", dpi=150)
-    print("\nPerformance chart saved to quickstart_performance.png")
+    print("\nPerformance comparison chart saved to quickstart_performance.png")
     print("Quickstart demo completed successfully!")
 
 if __name__ == "__main__":

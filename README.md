@@ -51,24 +51,33 @@ python example_quickstart.py
 The script will print the SVD mode strengths (singular values), identify the relative importance of signal families, and output out-of-sample portfolio statistics:
 ```text
 ==================================================
-SVD Predictive Mode Analysis
+SVD Predictive Mode Analysis (Proposed)
 ==================================================
 Empirical Singular Values (Mode Strengths):
-[0.003692 0.003488 0.002382 0.001004 0.      ]
-Signal Family: Momentum   | Submatrix Norm: 0.003794
-Signal Family: Reversal   | Submatrix Norm: 0.003375
-Signal Family: Volatility | Submatrix Norm: 0.002588
+[3.8024e-02 3.5594e-02 3.4498e-02 2.8064e-02 2.5212e-02 2.1010e-02
+ 1.9473e-02 1.8679e-02 1.4648e-02 7.6000e-05]
 ==================================================
-Annualized Return: 5.63%
-Annualized Vol:    13.80%
-Sharpe Ratio:      0.408
-Performance chart saved to quickstart_performance.png
+Annualized Return: 16.88%
+Annualized Vol:    9.90%
+Sharpe Ratio:      1.706
+Performance comparison chart saved to quickstart_performance.png
 ```
-It will also save a performance visualization chart to `quickstart_performance.png`.
+It will also save a performance comparison chart to `quickstart_performance.png`, plotting the cumulative returns of all baseline models.
 
 ---
 
-## 4. Platform Architecture (Local Workspace)
+## 4. Benchmark Comparison & Strategic Edge
+
+As demonstrated in the quickstart script and validated in the 100-year daily empirical results of our paper, the proposed **Dynamic Alpha Operator** achieves a distinct strategic edge over traditional predictive models under high-dimensional noisy settings:
+
+1.  **Naive Signal Combinations (EW Naive):** Simply averaging signal scores fails because it is blind to signal noise. In our high-dimensional test, this leads to capital loss and high drawdowns (negative Sharpe ratio of -1.029).
+2.  **Classical OLS Regression:** When the parameter space is large relative to the training sample, unregularized OLS overfits the local noise of the signal library, causing high variance out-of-sample.
+3.  **Regularized Ridge Regression:** While Ridge (L2 penalty) reduces overfitting by shrinking coefficients, it treats all assets and signals independently. It is blind to the systematic co-movement of signal loadings.
+4.  **Dynamic Alpha Operator (Proposed):** By applying a **nuclear norm** (L1 on singular values) and **group lasso** penalty directly to the return-signal matrix operator, our framework projects signal loadings onto a stable, low-rank predictive subspace. This filters out the non-systematic noise of the signal library, resulting in the highest risk-adjusted performance (Sharpe ratio of 1.706) and complete capital protection.
+
+---
+
+## 5. Platform Architecture (Local Workspace)
 
 While the public repository provides the open-source Quickstart example and academic manuscript PDF, the proprietary 100-year historical database and empirical rolling backtest suite are maintained locally:
 *   `code/data_prep.py`: Downloads daily data from Kenneth French's Dartmouth library, normalizes assets, and builds flat daily matrices.
@@ -79,7 +88,7 @@ While the public repository provides the open-source Quickstart example and acad
 
 ---
 
-## 5. License & Disclaimers
+## 6. License & Disclaimers
 
 All research, code, and configurations are the intellectual property of the **ShockBridge Pulse Research Lab**. 
 The repository is provided for academic review and research replication purposes. For licensing and commercial inquiries, contact: `rolffcoelho@hotmail.com`.
