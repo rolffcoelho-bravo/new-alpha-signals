@@ -100,6 +100,15 @@ python examples/industry_profiles.py
 python examples/ai_tuning.py
 ```
 
+#### E. Live Interactive Dashboard Web App (`examples/quantops_dashboard_app.py`)
+*   **Functional Role:** Real-time visual interface and interactive parameter adjustment.
+*   **Primary Inputs:** Dynamic rolling returns/signals, user hyperparameter sliders, and drift monitoring status.
+*   **Key Outputs:** Real-time updated return chart, bar loading attribution chart, and flashing drift alerts.
+*   **Operational Value:** Provides an interactive, dynamically updating GUI in your browser. Allows PMs to select institutional profiles and see parameter changes affect signal weights and OOS backtests in real-time.
+```bash
+streamlit run examples/quantops_dashboard_app.py
+```
+
 ---
 
 ## 5. Empirical Validation Figures (100-Year Historical Run)
