@@ -19,12 +19,12 @@ This repository implements the reference architecture for the **Dynamic Alpha Op
 
 ---
 
-## 2. LaTeX Manuscript Availability
+## 2. Academic Manuscript Availability
 
-The complete LaTeX source of our academic manuscript detailing the methodology, optimization constraints, and 100-year daily empirical results is publicly available in the root of this repository:
-*   **Manuscript:** [Alpha_Signals_manuscript.tex](Alpha_Signals_manuscript.tex)
+The compiled PDF of our academic manuscript detailing the methodology, optimization constraints, and 100-year daily empirical results is publicly available in the root of this repository:
+*   **Manuscript PDF:** [Alpha_Signals_manuscript.pdf](Alpha_Signals_manuscript.pdf)
 
-Feel free to compile the document or review it directly for the complete mathematical derivation and backtest diagnostics.
+Review the PDF directly for the complete mathematical derivation, out-of-sample backtest diagnostics, and empirical findings.
 
 ---
 
@@ -70,7 +70,7 @@ It will also save a performance visualization chart to `quickstart_performance.p
 
 ## 4. Platform Architecture (Local Workspace)
 
-While the public repository provides the open-source Quickstart example and LaTeX manuscript, the proprietary 100-year historical database and empirical rolling backtest suite are maintained locally:
+While the public repository provides the open-source Quickstart example and academic manuscript PDF, the proprietary 100-year historical database and empirical rolling backtest suite are maintained locally:
 *   `code/data_prep.py`: Downloads daily data from Kenneth French's Dartmouth library, normalizes assets, and builds flat daily matrices.
 *   `code/estimator.py`: The production PyTorch solver implementing warm-started nuclear norm and group lasso penalties.
 *   `code/empirical.py`: Handles out-of-sample daily rolling backtests, re-estimating the operator monthly and computing persistence metrics.
