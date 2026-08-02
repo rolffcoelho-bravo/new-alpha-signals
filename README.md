@@ -62,14 +62,43 @@ Below is a visual representation of the unified **QuantOps Dashboard** tracking 
 
 ### Workspace Component Directory
 
-The workspace is organized into four core scripts, summarized in the table below:
+The QuantOps suite contains the following core scripts:
 
-| Script Path | Component | Primary Data Inputs | Key Outputs | QuantOps Value |
-|:---|:---|:---|:---|:---|
-| **[`examples/real_world_data.py`](examples/real_world_data.py)** | **A. Live Real-World Data Ingestor** | Live Yahoo Finance prices for SPY, AAPL, MSFT, QQQ, AMZN. | SPY-orthogonal excess returns & standardized signal matrices. | **Production Ingestion:** Automates live data cleaning, beta estimation, return projection, and first-day NaN standard deviation handling. |
-| **[`examples/quant_mlops.py`](examples/quant_mlops.py)** | **B. Quant MLOps Lifecycle Engine** | Production operator weights ($A$, $S$, $V$) and new daily fits. | NPZ/JSON model binaries; Subspace overlap metrics; Drift alerts. | **Subspace Monitoring:** Saves and versions fitted operators. Audits subspace drift via principal angles; triggers auto-refits if overlap < 80%. |
-| **[`examples/industry_profiles.py`](examples/industry_profiles.py)** | **C. Multi-Profile Adapters** | Standard returns/signals + previous operator weights. | Tailored operator matrix matching portfolio profiles. | **Objective Customization:** Adapts operator loss to include turnover penalties (Hedge Fund) or speed-centric short-term constraints (HFT). |
-| **[`examples/ai_tuning.py`](examples/ai_tuning.py)** | **D. ML Parameter Tuner** | Multi-node loss landscape grid parameters ($\lambda_*$, $\lambda_{\text{grp}}$). | Validation Sharpe metrics; Research Agent Recommendation Report. | **Hyperparameter Optimization:** Simulates an AI Research Partner, running a validation sweep to select stable regularization bounds. |
+#### A. Live Real-World Ingestor (`examples/real_world_data.py`)
+*   **Functional Role:** Data Ingestion, Cleaning, and Orthogonalization.
+*   **Primary Inputs:** Live Yahoo Finance daily adjusted close price feeds for **SPY** (market factor), **AAPL**, **MSFT**, **QQQ**, and **AMZN**.
+*   **Key Outputs:** SPY-orthogonal returns ($\mathbf{y}_t^{\perp \mathbf{B}}$) and cross-sectionally standardized signals.
+*   **Operational Value:** Automates live data parsing, rolling beta estimates, risk projection, and protects against rolling standard deviation NaN values on start dates.
+```bash
+python examples/real_world_data.py
+```
+
+#### B. MLOps Lifecycle Engine (`examples/quant_mlops.py`)
+*   **Functional Role:** Parameter Versioning and Subspace Drift Monitoring.
+*   **Primary Inputs:** Production operator weights ($A$, $S$, $V$) and daily validation fits.
+*   **Key Outputs:** Local registry binaries (`.npz` / `.json`); cosine subspace overlap metrics; drift warning alerts.
+*   **Operational Value:** Versions and saves fitted operators. Audits subspace drift via principal angles and triggers an auto-refit pipeline when the overlap falls below 80%.
+```bash
+python examples/quant_mlops.py
+```
+
+#### C. Multi-Profile Industry Adapters (`examples/industry_profiles.py`)
+*   **Functional Role:** Portfolio Constraint Customization.
+*   **Primary Inputs:** Standard returns/signals and previous operator weights.
+*   **Key Outputs:** Custom operator matrix matching specific firm profiles.
+*   **Operational Value:** Modifies the proximal optimization solver to support **Hedge Fund** capacity limits (adds a turnover penalty relative to previous weights) or **HFT** prop-desk constraints (short-term mean reversion focus).
+```bash
+python examples/industry_profiles.py
+```
+
+#### D. ML Parameter Tuner (`examples/ai_tuning.py`)
+*   **Functional Role:** Dual-Regularization Hyperparameter Optimization.
+*   **Primary Inputs:** Optimization sweep parameters ($\lambda_*$ and $\lambda_{\text{grp}}$).
+*   **Key Outputs:** Grid search CSV log; LLM-style Research Agent Recommendation Report.
+*   **Operational Value:** Sweeps the loss landscape of the operator to select optimal regularization boundaries that minimize noise-fitting without triggering subspace collapse.
+```bash
+python examples/ai_tuning.py
+```
 
 ---
 
