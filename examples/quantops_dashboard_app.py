@@ -1,4 +1,4 @@
-"""
+r"""
 QuantOps Workspace: Live Interactive & Dynamic Quantitative Dashboard.
 
 Run this script locally using:
@@ -47,7 +47,8 @@ st.markdown("""
     .alert-ok { background-color: rgba(39, 174, 96, 0.15); border: 1px solid #27ae60; color: #2ecc71; }
     .alert-warn { background-color: rgba(231, 76, 60, 0.15); border: 1px solid #e74c3c; color: #e74c3c; }
 </style>
-""", unsafe_allowed_string=True)
+""", unsafe_allow_html=True)
+
 
 # 1. State Initialization
 if "step" not in st.session_state:
