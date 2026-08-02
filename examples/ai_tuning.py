@@ -1,4 +1,4 @@
-"""
+r"""
 Beyond Backtesting: ML and GenAI Research Agent Optimization.
 
 This script implements an automated machine learning feedback loop that 

@@ -1,4 +1,4 @@
-"""
+r"""
 Beyond Backtesting: Multi-Profile Industry Adapters.
 
 This script implements customized configurations and loss structures of the 
