@@ -54,125 +54,22 @@ Strategy: Dynamic_Alpha   | Ann Return:  16.94% | Ann Vol:  9.88% | Sharpe:  1.7
 
 ## 4. QuantOps Workspace
 
-To demonstrate the real-world execution and MLOps lifecycle of the Dynamic Alpha Operator, we provide a suite of advanced quantitative scripts in the `examples/` directory.
+To demonstrate the execution and MLOps lifecycle of the Dynamic Alpha Operator in a production environment, we provide a structured QuantOps suite. 
 
-### Visual Architecture Flowchart
-The following diagram illustrates how these advanced examples integrate together to form a closed-loop **QuantOps** pipeline:
+Below is a visual representation of the unified **QuantOps Dashboard** tracking the live operator estimation, model registry state, and subspace drift checks:
 
-```mermaid
-graph TD
-    A[Live Market Data: Yahoo Finance] -->|yfinance| B(A. Live Data Ingestor: real_world_data.py)
-    B -->|SPY-Orthogonal Returns & Signals| C{Dynamic Alpha Estimator}
-    
-    subgraph "Estimation & Hyperparameter Tuning"
-        C -->|SVT & BST NumPy Solver| D[example_quickstart.py]
-        E(D. ML Parameter Tuning: ai_tuning.py) -.->|Optimal lambda_star & lambda_grp| C
-    end
-    
-    subgraph "Institutional Adaptations"
-        F(C. Multi-Profile Adapters: industry_profiles.py) -->|Turnover Constraint| C
-        F -->|Short-Term HFT Constraint| C
-    end
-    
-    D -->|Fitted Operator: A_hat, S, V| G(B. Quant MLOps Engine: quant_mlops.py)
-    
-    subgraph "Model Lifecycle & Monitoring"
-        G -->|Register| H[(Local Model Registry: NPZ & JSON)]
-        G -->|Daily Inference| I{Health & Performance Monitor}
-        I -->|Subspace Overlap Audit| J[Drift Monitor: Overlap < 80%]
-        J -->|Yes: Trigger Refit| K[Auto-Refit Pipeline] --> C
-        J -->|No: Stable Subspace| L[Retain Active Model]
-        I -->|Out-of-Sample MSE| M[Performance Alert]
-    end
-    
-    style C fill:#2980b9,stroke:#1a5276,stroke-width:2px,color:#fff
-    style H fill:#27ae60,stroke:#1e8449,stroke-width:2px,color:#fff
-    style J fill:#e74c3c,stroke:#922b21,stroke-width:2px,color:#fff
-```
+![QuantOps Workspace Dashboard](quantops_dashboard.jpg)
 
-### Script Directory Reference & Visual Flows
+### Workspace Component Directory
 
-#### A. Live Real-World Data Ingestor (`examples/real_world_data.py`)
-Demonstrates how to run our regularized matrix estimator on live financial markets. It dynamically downloads daily adjusted closing prices for **SPY** (market proxy), **AAPL**, **MSFT**, **QQQ**, and **AMZN** from Yahoo Finance, projects returns to be SPY-orthogonal, constructs rolling signals, and outputs SVD modes and factor loadings.
+The workspace is organized into four core scripts, summarized in the table below:
 
-```mermaid
-flowchart LR
-    In1[yf.download: AAPL, MSFT, QQQ, AMZN, SPY] --> Proc1[Compute Daily Returns]
-    Proc1 --> Proc2[Estimate time-varying betas relative to SPY]
-    Proc2 --> Proc3[Project returns onto Orthogonal Complement]
-    Proc3 --> Sig[Construct rolling Mom21, Rev1, Vol21 signals]
-    Sig --> Std[Cross-sectional z-score standardization]
-    Std --> Fit[Fit Dynamic Alpha Operator via PGD]
-    Fit --> Out[Output: Singular Values & Signal Loadings]
-```
-
-```bash
-python examples/real_world_data.py
-```
-
-#### B. Quant MLOps (QuantOps) Lifecycle Engine (`examples/quant_mlops.py`)
-Implements lifecycle management for systematic operators. It establishes a local model registry (storing fitted parameters as NPZ/JSON), orchestrates rolling fits, and integrates:
-*   **Subspace Drift Audits:** Compares right singular vectors of production models against new fits using principal angles. Raises a warning alert if overlap falls below 80%, triggering model re-estimation.
-*   **Performance Decay Monitors:** Tracks daily prediction MSE and alerts when out-of-sample accuracy degrades.
-
-```mermaid
-flowchart TD
-    Init[Fitted Operator A_hat, S, V] --> Reg[Register run: weights.npz & metadata.json]
-    Reg --> RegFolder[(Local registry/run_ID/)]
-    RegFolder --> Monitor{Model Health Monitor}
-    
-    Monitor -->|Audit Subspace Drift| Drift{Subspace Overlap < 80%?}
-    Drift -->|Yes| AlertDrift[Drift Alert] --> Refit[Trigger Auto-Refit Pipeline]
-    Drift -->|No| SafeDrift[Subspace Stable] --> Retain[Retain Active Model]
-    
-    Monitor -->|Audit Prediction Accuracy| Perf{OOS MSE > 1.5x Baseline?}
-    Perf -->|Yes| AlertPerf[MSE Performance Alert] --> Action[Risk-Downscale/Suspend Strategy]
-    Perf -->|No| SafePerf[Accuracy within bounds]
-```
-
-```bash
-python examples/quant_mlops.py
-```
-
-#### C. Multi-Profile Industry Adapters (`examples/industry_profiles.py`)
-Customizes the optimization loss function of the operator using Proximal Gradient Descent (PGD) to match specific institutional constraints:
-*   **Hedge Funds (Capacity-Centric):** Adds a quadratic turnover cost penalty ($\lambda_{TC}$) relative to previous weights to favor long-term capacity signals (Mom252) and suppress high-turnover trading.
-*   **Prop-Trading/HFT (Speed-Centric):** Enforces a short-term volatility constraint to isolate high-frequency reversal signals (Rev1) under zero capacity penalties.
-
-```mermaid
-flowchart TD
-    Data[Return-Signal Matrices] --> Split{Quant Profile Selection}
-    
-    Split -->|Hedge Fund Capacity| HF[Add L1 Turnover Penalty: lambda_tc * |A - A_prev|]
-    Split -->|Prop-Desk/HFT Speed| HFT[Add High-Frequency Velocity constraint]
-    
-    HF --> Estimator[PGD Operator Optimization]
-    HFT --> Estimator
-    
-    Estimator --> OutHF[Prunes short-term signals; allocates to Mom252/Vol252]
-    Estimator --> OutHFT[Maximizes speed; allocates aggressively to Rev1]
-```
-
-```bash
-python examples/industry_profiles.py
-```
-
-#### D. ML & GenAI Automated Tuning (`examples/ai_tuning.py`)
-Simulates an AI Research Partner feedback loop. It runs a 36-node validation sweep over the hyperparameter loss grid ($\lambda_*$, $\lambda_{grp}$) and generates a structured, LLM-style **Research Agent Recommendation Report** proposing optimal parameters for production.
-
-```mermaid
-flowchart TD
-    Grid[Define search grid: lambda_star & lambda_grp] --> Sweep[36-node validation sweep over Loss Landscape]
-    Sweep --> Eval[Evaluate Validation Sharpe Ratio & Utility]
-    Eval --> Select[Select parameter set with max Sharpe & zero collapse]
-    Select --> Parse[Research Agent parses performance metadata]
-    Parse --> Gen[Compile structured GenAI Recommendation Report]
-    Gen --> Out[Export Report to terminal & CSV log]
-```
-
-```bash
-python examples/ai_tuning.py
-```
+| Script Path | Component | Primary Data Inputs | Key Outputs | QuantOps Value |
+|:---|:---|:---|:---|:---|
+| **[`examples/real_world_data.py`](examples/real_world_data.py)** | **A. Live Real-World Data Ingestor** | Live Yahoo Finance prices for SPY, AAPL, MSFT, QQQ, AMZN. | SPY-orthogonal excess returns & standardized signal matrices. | **Production Ingestion:** Automates live data cleaning, beta estimation, return projection, and first-day NaN standard deviation handling. |
+| **[`examples/quant_mlops.py`](examples/quant_mlops.py)** | **B. Quant MLOps Lifecycle Engine** | Production operator weights ($A$, $S$, $V$) and new daily fits. | NPZ/JSON model binaries; Subspace overlap metrics; Drift alerts. | **Subspace Monitoring:** Saves and versions fitted operators. Audits subspace drift via principal angles; triggers auto-refits if overlap < 80%. |
+| **[`examples/industry_profiles.py`](examples/industry_profiles.py)** | **C. Multi-Profile Adapters** | Standard returns/signals + previous operator weights. | Tailored operator matrix matching portfolio profiles. | **Objective Customization:** Adapts operator loss to include turnover penalties (Hedge Fund) or speed-centric short-term constraints (HFT). |
+| **[`examples/ai_tuning.py`](examples/ai_tuning.py)** | **D. ML Parameter Tuner** | Multi-node loss landscape grid parameters ($\lambda_*$, $\lambda_{\text{grp}}$). | Validation Sharpe metrics; Research Agent Recommendation Report. | **Hyperparameter Optimization:** Simulates an AI Research Partner, running a validation sweep to select stable regularization bounds. |
 
 ---
 
