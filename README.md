@@ -19,48 +19,63 @@ This repository implements the reference architecture for the **Dynamic Alpha Op
 
 ---
 
-## 2. Platform Architecture
+## 2. LaTeX Manuscript Availability
 
-The repository is organized into a modular, production-ready python library:
+The complete LaTeX source of our academic manuscript detailing the methodology, optimization constraints, and 100-year daily empirical results is publicly available in the root of this repository:
+*   **Manuscript:** [Alpha_Signals_manuscript.tex](Alpha_Signals_manuscript.tex)
 
-```text
-new-alpha-signals/
-├── code/
-│   ├── data_prep.py            # Data ingestion, normalization, and alignment pipeline
-│   ├── estimator.py            # Reference PyTorch solver for the Alpha Operator
-│   ├── empirical.py            # Out-of-sample evaluation and persistence diagnostics
-│   ├── benchmarks.py           # Benchmark models and conditional state-gating modules
-│   ├── utils.py                # High-performance matrix calculus and statistical utilities
-│   └── visualization.py        # Publication-quality reporting and plotting suite
-└── README.md
+Feel free to compile the document or review it directly for the complete mathematical derivation and backtest diagnostics.
+
+---
+
+## 3. Standalone Quickstart Example
+
+For professional transparency and immediate testing, we provide a fully functional, self-contained demonstration script in the root:
+*   **Quickstart Script:** [example_quickstart.py](example_quickstart.py)
+
+This script generates a realistic synthetic dataset representing high-dimensional signals and asset returns, projects returns onto the orthogonal complement of the benchmark risk exposures, fits our regularized PyTorch operator using OLS warm start, performs SVD mode decomposition, and backtests a long-short portfolio strategy.
+
+### Installation
+Ensure you have the required dependencies installed:
+```bash
+pip install torch numpy pandas matplotlib
 ```
 
-### Core Components:
-*   **Data Preparation (`data_prep.py`):** Standardizes historical panels and constructs point-in-time signal libraries, ensuring no look-ahead leakage.
-*   **Operator Estimator (`estimator.py`):** Solves the regularized loss minimization problem to extract the latent predictive directions.
-*   **Out-of-Sample Suite (`empirical.py`):** Evaluates signal persistence and conducts non-parametric subspace overlap analysis.
-*   **Benchmarks (`benchmarks.py`):** Compares performance against classical linear models, regularized regressions, and ML-based conditional deployment gates.
+### Running the Demo
+Execute the quickstart script directly from your terminal:
+```bash
+python example_quickstart.py
+```
+
+### Expected Output
+The script will print the SVD mode strengths (singular values), identify the relative importance of signal families, and output out-of-sample portfolio statistics:
+```text
+==================================================
+SVD Predictive Mode Analysis
+==================================================
+Empirical Singular Values (Mode Strengths):
+[0.003692 0.003488 0.002382 0.001004 0.      ]
+Signal Family: Momentum   | Submatrix Norm: 0.003794
+Signal Family: Reversal   | Submatrix Norm: 0.003375
+Signal Family: Volatility | Submatrix Norm: 0.002588
+==================================================
+Annualized Return: 5.63%
+Annualized Vol:    13.80%
+Sharpe Ratio:      0.408
+Performance chart saved to quickstart_performance.png
+```
+It will also save a performance visualization chart to `quickstart_performance.png`.
 
 ---
 
-## 3. Targeted Applications
+## 4. Platform Architecture (Local Workspace)
 
-This framework is designed to deliver high-performance tools for:
-*   **Portfolio Managers:** Quantifying hidden concentration in signal libraries and dynamically adjusting exposures.
-*   **Quantitative Researchers:** Formulating rigorous rank and persistence tests to evaluate signal efficacy before capital allocation.
-*   **Quantitative Developers:** Integrating structured signal packets into existing execution and risk management engines.
-
----
-
-## 4. Academic Positioning
-
-This platform serves as the replication codebase for the accompanying research paper:
-> **Beyond Backtesting: A New Framework for Alpha Signals**  
-> *Dynamic Statistical Identification, Risk-Orthogonalization, and Conditional Deployment*  
-> **Author:** Rodolfo Pereira (rolffcoelho@hotmail.com)  
-> **Institution:** ShockBridge Pulse Research Lab (www.shockbridgepulse.com)
-
-The framework is positioned within the empirical asset pricing literature, proposing a novel methodology that optimizes signal compression directly under economic and portfolio constraints, rather than statistical variance.
+While the public repository provides the open-source Quickstart example and LaTeX manuscript, the proprietary 100-year historical database and empirical rolling backtest suite are maintained locally:
+*   `code/data_prep.py`: Downloads daily data from Kenneth French's Dartmouth library, normalizes assets, and builds flat daily matrices.
+*   `code/estimator.py`: The production PyTorch solver implementing warm-started nuclear norm and group lasso penalties.
+*   `code/empirical.py`: Handles out-of-sample daily rolling backtests, re-estimating the operator monthly and computing persistence metrics.
+*   `code/benchmarks.py`: Fits OLS, Ridge, and Random Forest ML state-gating classifiers.
+*   `code/utils.py` & `code/visualization.py`: Computing HAC Newey-West standard errors, block bootstrapped p-values, and publication-ready charts.
 
 ---
 

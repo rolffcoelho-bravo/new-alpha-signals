@@ -6,7 +6,6 @@ Reproducibility.md
 Beyond_Backtesting_Alpha_Signals_Blueprint.md
 RESEARCH Note.txt
 mathematical_novelty.tex
-Alpha_Signals_manuscript.tex
 
 # Python cache and environment files
 __pycache__/
@@ -23,3 +22,6 @@ output/figures/
 
 # Critical source code (kept hidden until finalization)
 code/
+
+# Generated local run outputs
+quickstart_performance.png
