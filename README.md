@@ -52,7 +52,7 @@ Strategy: Dynamic_Alpha   | Ann Return:  16.94% | Ann Vol:  9.88% | Sharpe:  1.7
 
 ---
 
-## 4. Advanced Production Examples (Quant Suite)
+## 4. QuantOps Workspace
 
 To demonstrate the real-world execution and MLOps lifecycle of the Dynamic Alpha Operator, we provide a suite of advanced quantitative scripts in the `examples/` directory.
 
