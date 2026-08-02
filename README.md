@@ -56,9 +56,20 @@ Strategy: Dynamic_Alpha   | Ann Return:  16.94% | Ann Vol:  9.88% | Sharpe:  1.7
 
 To demonstrate the execution and MLOps lifecycle of the Dynamic Alpha Operator in a production environment, we provide a structured QuantOps suite. 
 
-Below is a visual representation of the unified **QuantOps Dashboard** tracking the live operator estimation, model registry state, and subspace drift checks:
+Below is the **QuantOps Dashboard** tracking the live operator estimation, model registry state, and subspace drift checks. 
 
-![QuantOps Workspace Dashboard](quantops_dashboard.jpg)
+**Click the dashboard image below to inspect the live application code:**
+
+[![QuantOps Workspace Dashboard](quantops_dashboard.jpg)](examples/quantops_dashboard_app.py)
+
+> [!TIP]
+> **🚀 Launch the Live Interactive Dashboard Web App:**
+> You can run the real-time, dynamically updating dashboard web application locally in your browser. Launch it by running:
+> ```bash
+> python -m streamlit run examples/quantops_dashboard_app.py
+> ```
+
+---
 
 ### Workspace Component Directory
 
