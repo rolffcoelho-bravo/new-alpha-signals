@@ -4,11 +4,14 @@ Beyond Backtesting: Dynamic Alpha Operator Quick-Start Demonstration.
 This is a self-contained, high-profile example illustrating the mathematical 
 and empirical execution of the regularized Dynamic Alpha Operator framework.
 
+It uses a custom, high-performance Proximal Gradient Descent (PGD) solver 
+in pure NumPy, making it 100% independent of heavy DL libraries and highly stable.
+
 It demonstrates:
 1. Benchmark-orthogonalization of asset returns.
-2. PyTorch-based optimization of the operator subject to:
-   - Nuclear Norm regularizations (inducing low-rank structures).
-   - Group Lasso regularizations (inducing signal-family sparsity).
+2. Proximal Gradient Descent (PGD) optimization of the operator subject to:
+   - Singular Value Thresholding (inducing low-rank structures).
+   - Block Soft-Thresholding (inducing signal-family sparsity).
 3. SVD Mode Decomposition and signal family importance attribution.
 4. Capital allocation via a long-short portfolio adapter.
 5. Out-of-sample backtesting comparison against OLS, Ridge, and Naive benchmarks.
@@ -17,28 +20,26 @@ It demonstrates:
 Designed for systematic quants, portfolio managers, and academic reviewers.
 """
 
-import torch
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 # Set seed for exact reproducibility
 np.random.seed(2025)
-torch.manual_seed(2025)
 
 # --- 1. Define the Dynamic Alpha Operator Estimator ---
 
 class DynamicAlphaEstimator:
     """
-    PyTorch-based regularized estimator for the high-dimensional Dynamic Alpha Operator.
+    NumPy-based proximal gradient solver for the high-dimensional Dynamic Alpha Operator.
+    Enforces nuclear norm and group lasso penalties exactly via SVT and BST.
     """
-    def __init__(self, lambda_star=0.01, lambda_grp=0.01, lr=0.05, max_iter=200, tol=1e-6, verbose=False):
+    def __init__(self, lambda_star=0.001, lambda_grp=0.001, lr=0.001, max_iter=250, tol=1e-6):
         self.lambda_star = lambda_star
         self.lambda_grp = lambda_grp
         self.lr = lr
         self.max_iter = max_iter
         self.tol = tol
-        self.verbose = verbose
         
         self.A_hat_ = None  # Estimated operator matrix N x NP
         self.U_ = None      # Left singular vectors (Return-space directions)
@@ -47,7 +48,7 @@ class DynamicAlphaEstimator:
         
     def fit(self, Y_perp, X_vec, N, P):
         """
-        Fits the regularized operator A.
+        Fits the regularized operator A using Proximal Gradient Descent.
         """
         T = Y_perp.shape[0]
         NP = N * P
@@ -56,67 +57,76 @@ class DynamicAlphaEstimator:
         gamma = 1.0
         X_cov = X_vec.T @ X_vec + gamma * np.eye(NP)
         A_ols_T = np.linalg.solve(X_cov, X_vec.T @ Y_perp)  # NP x N
-        A_init_val = A_ols_T.T  # N x NP
-        
-        # Convert to PyTorch tensors
-        y = torch.tensor(Y_perp, dtype=torch.float32)  # T x N
-        x = torch.tensor(X_vec, dtype=torch.float32)  # T x NP
+        A = A_ols_T.T  # N x NP
         
         # Estimate residual covariance weighting matrix Omega
-        diag_var = torch.var(y, dim=0) + 1e-6
-        omega_inv = torch.diag(1.0 / diag_var)  # N x N
-        
-        # Initialize A from Ridge OLS
-        A = torch.tensor(A_init_val, dtype=torch.float32, requires_grad=True)
-        
-        # Optimize using Adam
-        optimizer = torch.optim.Adam([A], lr=self.lr)
+        diag_var = np.var(Y_perp, axis=0) + 1e-6
+        omega_inv = np.diag(1.0 / diag_var)  # N x N
         
         best_loss = float('inf')
-        best_A = None
+        best_A = A.copy()
         
         for iteration in range(self.max_iter):
-            optimizer.zero_grad()
+            # 1. Gradient Step on Data Loss
+            predictions = X_vec @ A.T
+            residuals = Y_perp - predictions  # T x N
             
-            # 1. Data Loss
-            predictions = torch.matmul(x, A.t())  # T x N
-            residuals = y - predictions  # T x N
+            # Gradient: N x NP
+            grad_data = -2.0 / T * (omega_inv @ residuals.T @ X_vec)
             
-            weighted_res = torch.matmul(residuals, omega_inv)  # T x N
-            data_loss = torch.sum(residuals * weighted_res) / T
+            # Use a normalized gradient step to prevent overflow/divergence
+            grad_norm = np.linalg.norm(grad_data)
+            if grad_norm > 1e-8:
+                A_next = A - self.lr * (grad_data / grad_norm)
+            else:
+                A_next = A - self.lr * grad_data
             
-            # 2. Nuclear Norm (L1 on singular values)
-            s_vals = torch.linalg.svdvals(A)
-            nuclear_loss = torch.sum(s_vals)
-            
-            # 3. Group Lasso (Frobenius on signal submatrices)
-            group_loss = torch.tensor(0.0, dtype=torch.float32)
+            # 2. Proximal Step for Group Lasso (Block Soft-Thresholding)
             for p in range(P):
-                indices = torch.arange(p, NP, P)
-                A_sub = A[:, indices]  # N x N
-                group_loss += torch.linalg.matrix_norm(A_sub, ord='fro')
-                
-            # Total Loss (scaled penalties for smaller sample size)
-            loss = data_loss + self.lambda_star * nuclear_loss + self.lambda_grp * group_loss
+                indices = np.arange(p, NP, P)
+                A_sub = A_next[:, indices]  # N x N
+                norm_val = np.linalg.norm(A_sub, ord='fro')
+                if norm_val > 1e-8:
+                    scale = np.maximum(1.0 - self.lr * self.lambda_grp / norm_val, 0.0)
+                    A_next[:, indices] = A_sub * scale
+                else:
+                    A_next[:, indices] = 0.0
+                    
+            # 3. Proximal Step for Nuclear Norm (Singular Value Thresholding - SVT)
+            U, S, Vt = np.linalg.svd(A_next, full_matrices=False)
+            S_thresh = np.maximum(S - self.lr * self.lambda_star, 0.0)
+            A_next = U @ np.diag(S_thresh) @ Vt
             
-            loss_val = loss.item()
+            # Calculate objective function value
+            pred = X_vec @ A_next.T
+            res = Y_perp - pred
+            weighted_res = res @ omega_inv
+            data_loss = np.sum(res * weighted_res) / T
+            nuclear_loss = np.sum(S_thresh)
+            
+            group_loss = 0.0
+            for p in range(P):
+                indices = np.arange(p, NP, P)
+                group_loss += np.linalg.norm(A_next[:, indices], ord='fro')
+                
+            loss_val = data_loss + self.lambda_star * nuclear_loss + self.lambda_grp * group_loss
+            
             if iteration > 10 and abs(loss_val - best_loss) < self.tol:
                 break
                 
             if loss_val < best_loss:
                 best_loss = loss_val
-                best_A = A.detach().clone()
+                best_A = A_next.copy()
                 
-            loss.backward()
-            optimizer.step()
+            A = A_next
             
-        self.A_hat_ = best_A.cpu().numpy()
+        self.A_hat_ = best_A
         
-        # SVD Mode Decomposition
+        # Final SVD Mode Decomposition
         U, S, Vh = np.linalg.svd(self.A_hat_, full_matrices=False)
-        self.U_ = U          # Left singular vectors (N x r)
-        self.S_ = S          # Singular values (r,)
-        self.V_ = Vh.T       # Right singular vectors (NP x r)
+        self.U_ = U
+        self.S_ = S
+        self.V_ = Vh.T
         
         return self
     
@@ -184,12 +194,12 @@ def main():
     X_train, X_test = signals[:split], signals[split:]
     
     # 3. Fit Proposed Estimator (Dynamic Alpha Operator)
-    print("\nFitting regularized Dynamic Alpha Operator...")
+    print("\nFitting regularized Dynamic Alpha Operator via Proximal Gradient Descent...")
     estimator = DynamicAlphaEstimator(
-        lambda_star=0.004, 
-        lambda_grp=0.004, 
-        lr=0.02, 
-        max_iter=200
+        lambda_star=0.0001, 
+        lambda_grp=0.0001, 
+        lr=0.001, 
+        max_iter=300
     )
     estimator.fit(Y_train, X_train, N, P)
     
