@@ -20,12 +20,35 @@ This repository implements the reference architecture for the **Dynamic Alpha Op
 
 ---
 
-## 2. Academic Manuscript Availability
+## 2. Academic Manuscript & Methodology
 
 The compiled PDF of our academic manuscript detailing the methodology, optimization constraints, and 100-year daily empirical results is publicly available in the root of this repository:
 *   **Manuscript PDF:** [Alpha_Signals_manuscript.pdf](Alpha_Signals_manuscript.pdf)
 
 Review the PDF directly for the complete mathematical derivation, out-of-sample backtest diagnostics, and empirical findings.
+
+### Mathematical Formulation & Appendix
+
+The proposed framework defines return predictability as a high-dimensional **Dynamic Alpha Operator** matrix $\mathcal{A} \in \mathbb{R}^{N \times NP}$ mapping a tensor of $P$ signal families across $N$ assets to market-orthogonal asset returns. 
+
+#### Regularization Objective
+To filter out idiosyncratic noise and group-redundant signals, we solve the following dual-regularized convex optimization problem:
+
+$$\min_{\mathcal{A}} \; \frac{1}{2 T} \sum_{t=1}^T \left\| \mathbf{y}_t^{\perp \mathbf{B}} - \mathbf{x}_t \mathcal{A}^T \right\|_{\mathbf{\Omega}^{-1}}^2 + \lambda_* \|\mathcal{A}\|_* + \lambda_{\text{grp}} \sum_{g=1}^G \|\mathcal{A}_g\|_F$$
+
+Where:
+*   $\mathbf{y}_t^{\perp \mathbf{B}} \in \mathbb{R}^N$ represents the return vector projected onto the market-orthogonal complement of the benchmark risk factors $\mathbf{B}$ at day $t$.
+*   $\|\mathcal{A}\|_* = \sum_i \sigma_i(\mathcal{A})$ represents the **nuclear norm** (L1 norm on singular values), which penalizes high-rank operators and compresses the predictive structure to a low-rank subspace.
+*   $\|\mathcal{A}_g\|_F$ represents the **group lasso** penalty (Frobenius norm on submatrices) across signal families $g \in \{1,\dots,G\}$, forcing non-predictive signal blocks to be exactly zero.
+*   $\mathbf{\Omega}^{-1}$ is the diagonal inverse residual variance weighting matrix.
+
+#### Proximal Gradient Updates
+Since the objective is non-differentiable, the custom PGD solver computes the following split proximal steps:
+1.  **Gradient Step:** $\mathcal{A}^{(k+1/2)} = \mathcal{A}^{(k)} - \eta \nabla L_{\text{data}}(\mathcal{A}^{(k)})$
+2.  **Group Sparsity Projection (BST):** For each signal family $g$, scale weights:
+    $$\mathcal{A}_g^{(k+3/4)} = \mathcal{A}_g^{(k+1/2)} \max\left(1 - \frac{\eta \lambda_{\text{grp}}}{\|\mathcal{A}_g^{(k+1/2)}\|_F}, 0\right)$$
+3.  **Rank-Sparsity Projection (SVT):** Compute SVD of the intermediate operator $\mathbf{U}\mathbf{S}\mathbf{V}^T$ and threshold:
+    $$\mathcal{A}^{(k+1)} = \mathbf{U} \, \text{diag}(\max(s_i - \eta \lambda_*, 0)) \, \mathbf{V}^T$$
 
 ---
 
@@ -37,18 +60,16 @@ The chart below shows the out-of-sample cumulative returns of our framework comp
 
 ![Quickstart Performance](quickstart_performance.png)
 
-### Expected Run Statistics
-When executed, the system outputs the following out-of-sample statistics:
-```text
-=================================================================
-Out-of-Sample Portfolio Metrics Comparison
-=================================================================
-Strategy: EW_Naive        | Ann Return: -10.18% | Ann Vol:  9.89% | Sharpe: -1.029 | Max DD: 26.97%
-Strategy: OLS             | Ann Return:  16.85% | Ann Vol:  9.89% | Sharpe:  1.703 | Max DD:  6.28%
-Strategy: Ridge           | Ann Return:  13.50% | Ann Vol:  9.65% | Sharpe:  1.399 | Max DD:  8.38%
-Strategy: Dynamic_Alpha   | Ann Return:  16.94% | Ann Vol:  9.88% | Sharpe:  1.714 | Max DD:  6.25%
-=================================================================
-```
+### Out-of-Sample Performance Comparison
+
+The table below summarizes the key risk-adjusted metrics calculated over the out-of-sample test window:
+
+| Strategy | Annualized Return | Annualized Volatility | Sharpe Ratio | Maximum Drawdown | Subspace Stability (Overlap %) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Proposed: Dynamic Alpha Operator** | **16.94%** | **9.88%** | **1.714** | **6.25%** | **98.07%** (Slow decay) |
+| Regularized Ridge (L2 Shrinkage) | 13.50% | 9.65% | 1.399 | 8.38% | N/A (No subspace compression) |
+| Classical OLS Regression | 16.85% | 9.89% | 1.703 | 6.28% | N/A (No rank bounds) |
+| Naive Equal-Weight (EW) Signals | -10.18% | 9.89% | -1.029 | 26.97% | N/A (Static weights) |
 
 ---
 
