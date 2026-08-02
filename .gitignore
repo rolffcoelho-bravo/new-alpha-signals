@@ -22,3 +22,7 @@ output/figures/
 
 # Critical source code (kept hidden until finalization)
 code/
+
+# Local model registries (private model binaries)
+model_registry/
+examples/model_registry/

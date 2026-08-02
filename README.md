@@ -62,7 +62,15 @@ Demonstrates how to run our regularized matrix estimator on live financial marke
 python examples/real_world_data.py
 ```
 
-### B. Multi-Profile Industry Adapters (`examples/industry_profiles.py`)
+### B. Quant MLOps (QuantOps) Lifecycle Engine (`examples/quant_mlops.py`)
+Implements lifecycle management for systematic operators. It establishes a local model registry (storing fitted parameters as NPZ/JSON), orchestrates rolling fits, and integrates:
+*   **Subspace Drift Audits:** Compares right singular vectors of production models against new fits using principal angles. Raises a warning alert if overlap falls below 80%, triggering model re-estimation.
+*   **Performance Decay Monitors:** Tracks daily prediction MSE and alerts when out-of-sample accuracy degrades.
+```bash
+python examples/quant_mlops.py
+```
+
+### C. Multi-Profile Industry Adapters (`examples/industry_profiles.py`)
 Customizes the optimization loss function of the operator using Proximal Gradient Descent (PGD) to match specific institutional constraints:
 *   **Hedge Funds (Capacity-Centric):** Adds a quadratic turnover cost penalty ($\lambda_{TC}$) relative to previous weights to favor long-term capacity signals (Mom252) and suppress high-turnover trading.
 *   **Prop-Trading/HFT (Speed-Centric):** Enforces a short-term volatility constraint to isolate high-frequency reversal signals (Rev1) under zero capacity penalties.
@@ -70,7 +78,7 @@ Customizes the optimization loss function of the operator using Proximal Gradien
 python examples/industry_profiles.py
 ```
 
-### C. ML & GenAI Automated Tuning (`examples/ai_tuning.py`)
+### D. ML & GenAI Automated Tuning (`examples/ai_tuning.py`)
 Simulates an AI Research Partner feedback loop. It runs a 36-node validation sweep over the hyperparameter loss grid ($\lambda_*$, $\lambda_{grp}$) and generates a structured, LLM-style **Research Agent Recommendation Report** proposing optimal parameters for production.
 ```bash
 python examples/ai_tuning.py
