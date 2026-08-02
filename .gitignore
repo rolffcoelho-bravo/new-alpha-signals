@@ -1,0 +1,20 @@
+# Local research diaries and blueprints (hidden/private files)
+Memory.md
+Findings.md
+Transcription.md
+Reproducibility.md
+Beyond_Backtesting_Alpha_Signals_Blueprint.md
+RESEARCH Note.txt
+
+# Python cache and environment files
+__pycache__/
+*.pyc
+.venv/
+env/
+.env
+
+# Raw and processed data (never commit data to public git)
+data/
+code/data/
+output/tables/
+output/figures/
