@@ -44,9 +44,18 @@ Where:
 
 #### Proximal Gradient Updates
 Since the objective is non-differentiable, the custom PGD solver computes the following split proximal steps:
-1.  **Gradient Step:** $\mathcal{A}^{(k+1/3)} = \mathcal{A}^{(k)} - \eta \nabla L_{\text{data}}(\mathcal{A}^{(k)})$
-2.  **Group Sparsity Projection (BST):** For each signal family $g$, apply block soft-thresholding: $\mathcal{A}_g^{(k+2/3)} = \mathcal{A}_g^{(k+1/3)} \max\left(1 - \frac{\eta \lambda_{\text{grp}}}{\|\mathcal{A}_g^{(k+1/3)}\|_F}, 0\right)$
-3.  **Rank-Sparsity Projection (SVT):** Compute SVD of the intermediate operator $\mathcal{A}^{(k+2/3)} = \mathbf{U}\mathbf{S}\mathbf{V}^T$ and threshold: $\mathcal{A}^{(k+1)} = \mathbf{U} \, \text{diag}(\max(s_i - \eta \lambda_*, 0)) \, \mathbf{V}^T$
+
+##### 1. Gradient Step
+We compute a normalized gradient step on the data loss to update the operator:
+$$\mathcal{A}^{(k+1/3)} = \mathcal{A}^{(k)} - \eta \nabla L_{\text{data}}(\mathcal{A}^{(k)})$$
+
+##### 2. Group Sparsity Projection (BST)
+For each signal family $g$, we apply block soft-thresholding to induce group-level sparsity:
+$$\mathcal{A}_g^{(k+2/3)} = \mathcal{A}_g^{(k+1/3)} \max\left(1 - \frac{\eta \lambda_{\text{grp}}}{\|\mathcal{A}_g^{(k+1/3)}\|_F}, 0\right)$$
+
+##### 3. Rank-Sparsity Projection (SVT)
+We compute the SVD of the intermediate operator $\mathcal{A}^{(k+2/3)} = \mathbf{U}\mathbf{S}\mathbf{V}^T$ and threshold the singular values to enforce a low-rank predictive subspace:
+$$\mathcal{A}^{(k+1)} = \mathbf{U} \, \text{diag}(\max(s_i - \eta \lambda_*, 0)) \, \mathbf{V}^T$$
 
 ---
 
