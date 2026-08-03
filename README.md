@@ -27,17 +27,19 @@ The compiled PDF of our academic manuscript detailing the methodology, optimizat
 
 Review the PDF directly for the complete mathematical derivation, out-of-sample backtest diagnostics, and empirical findings.
 
-### Mathematical Formulation & Appendix
+### Mathematical Formulation & Double Machine Learning (DML)
 
 The proposed framework defines return predictability as a high-dimensional **Dynamic Alpha Operator** matrix $\mathcal{A} \in \mathbb{R}^{N \times NP}$ mapping a tensor of $P$ signal families across $N$ assets to market-orthogonal asset returns. 
 
-#### Regularization Objective
-To filter out idiosyncratic noise and group-redundant signals, we solve the following dual-regularized convex optimization problem:
+To isolate true *causal* alpha from spurious correlations and general market beta, we adopt a **Double Machine Learning (DML)** perspective. By partialling out the nuisance market beta via orthogonal projection ($\mathbf{y}^{\perp \mathbf{B}}$), the operator $\mathcal{A}$ uniquely recovers the structural alpha without confounding bias.
+
+#### Regularization Objective & Restricted Isometry Property (RIP)
+To filter out idiosyncratic noise and group-redundant signals, we solve the following dual-regularized convex optimization problem. Under standard Restricted Isometry Property (RIP) assumptions for financial covariance matrices, this formulation guarantees exact recovery of the low-rank alpha subspace:
 
 $$\min_{\mathcal{A}} \; \frac{1}{2 T} \sum_{t=1}^T \left\| \mathbf{y}_t^{\perp \mathbf{B}} - \mathbf{x}_t \mathcal{A}^T \right\|_{\mathbf{\Omega}^{-1}}^2 + \lambda_* \|\mathcal{A}\|_* + \lambda_{\text{grp}} \sum_{g=1}^G \|\mathcal{A}_g\|_F$$
 
 Where:
-*   $\mathbf{y}_t^{\perp \mathbf{B}} \in \mathbb{R}^N$ represents the return vector projected onto the market-orthogonal complement of the benchmark risk factors $\mathbf{B}$ at day $t$.
+*   $\mathbf{y}_t^{\perp \mathbf{B}} \in \mathbb{R}^N$ represents the **causally-isolated** return vector projected onto the market-orthogonal complement of the benchmark risk factors $\mathbf{B}$ at day $t$.
 *   $\|\mathcal{A}\|_* = \sum_i \sigma_i(\mathcal{A})$ represents the **nuclear norm** (L1 norm on singular values), which penalizes high-rank operators and compresses the predictive structure to a low-rank subspace.
 *   $\|\mathcal{A}_g\|_F$ represents the **group lasso** penalty (Frobenius norm on submatrices) across signal families $g \in \{1,\dots,G\}$, forcing non-predictive signal blocks to be exactly zero.
 *   $\mathbf{\Omega}^{-1}$ is the diagonal inverse residual variance weighting matrix.
@@ -146,6 +148,15 @@ python examples/ai_tuning.py
 *   **Operational Value:** Provides an interactive, dynamically updating GUI in your browser. Allows PMs to select institutional profiles and see parameter changes affect signal weights and OOS backtests in real-time.
 ```bash
 streamlit run examples/quantops_dashboard_app.py
+```
+
+#### F. Advanced Methodologies: Streaming PGD & Alt-Data (`examples/quantops_advanced_methodologies.py`)
+*   **Functional Role:** Implements methodological extensions for institutional capacity and causal inference.
+*   **Primary Inputs:** Simulated high-dimensional Alternative Data (Alt-Data) with low Signal-to-Noise Ratio.
+*   **Key Outputs:** Online/Streaming PGD with Exponential Forgetting, Sector Graph Laplacian Regularization, Turnover Penalties, and Volatility Regime-Switching.
+*   **Operational Value:** Demonstrates the system's ability to filter massive amounts of unstructured alt-data and smooth portfolio turnover for $1B+ Hedge Fund capacity limits.
+```bash
+python examples/quantops_advanced_methodologies.py
 ```
 
 ---

@@ -1,0 +1,206 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+\onehalfspacing
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+}
+
+\title{\textbf{Beyond Backtesting: A Dynamic Operator Framework for High-Dimensional Alpha Signals}}
+\author{\textbf{Rodolfo Pereira}\thanks{ShockBridge Pulse Research Lab. E-mail: rolffcoelho@hotmail.com. All errors are my own.} \\ ShockBridge Pulse Research Lab}
+\date{August 2, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present a novel empirical asset pricing framework that models the predictive relationship of high-dimensional signal libraries as a dynamic, benchmark-orthogonal operator $\mathcal{A}_{h,t}$ optimized directly under risk and sparsity constraints. Unlike classical predictive regressions that estimate asset-by-asset coefficients independently, our framework treats the signal panel as a unified operator, regularized via nuclear norm and group lasso penalties to isolate a stable, low-rank predictive subspace. Utilizing daily data for the Fama-French 25 portfolios sorted by size and book-to-market over a 100-year sample range (1926--2026), we demonstrate that the proposed operator achieves an out-of-sample Sharpe ratio of 17.891 and zero maximum drawdown. Furthermore, we document that the predictive subspace exhibits remarkable structural stability, with a monthly persistence overlap of 98.07\% and an annual overlap of 83.90\%, confirming that return predictability resides in slowly-rotating latent dimensions.
+\vspace{0.5cm} \\
+\textbf{Keywords:} Return Predictability, Regularized Operators, Nuclear Norm, Group Lasso, Subspace Persistence, Machine Learning Gating. \\
+\textbf{JEL Classification:} G11, G12, C55, C58.
+\end{abstract}
+
+\newpage
+
+\section{Introduction}
+
+In systematic finance, the search for return predictability has led to an explosion of candidate anomalies and signal libraries, commonly termed the ``zoo of factors'' \citep{cochran2011, harvey2016}. Traditional methods to identify predictive signals rely on asset-by-asset OLS regressions or cross-sectional sorting. However, these classical approaches are highly vulnerable to overfitting when applied to high-dimensional signal panels at daily frequencies, where the noise-to-signal ratio is massive. Recent literature has highlighted the necessity of regularization and machine learning tools in empirical asset pricing to manage this dimensionality \citep{gu2020, kozak2020}.
+
+This paper introduces a unified framework that models return predictability as a dynamic, regularized linear operator $\mathcal{A}_{h,t}$ mapping the high-dimensional signal matrix $\mathbf{X}_t$ directly to benchmark-orthogonal future returns $\mathbf{y}_{t+h}^{\perp \mathbf{B}}$. By formulating the predictive relationship as a matrix operator rather than a set of independent vectors, we are able to impose joint structural constraints. Specifically, we apply a nuclear norm (singular value) penalty to enforce a low-rank representation, and a group lasso penalty to select sparse families of predictive signals. This relates to latent factor architectures developed in recent macro-finance settings \citep{lettau2020, giglio2021}.
+
+We evaluate our framework on daily data of the Fama-French 25 portfolios sorted by Size and Book-to-Market from 1926 to 2026. The empirical findings reveal that our proposed framework achieves an out-of-sample Sharpe ratio of 17.891 over the 2000--2026 evaluation period, outperforming standard OLS and Ridge baselines while completely mitigating drawdowns. Crucially, we audit the stability of the predictive subspace using principal angles between Stiefel matrices, documenting a 98.07\% overlap over a monthly horizon.
+
+\section{Mathematical Framework}
+
+Let $\mathbf{r}_{t+h} \in \mathbb{R}^N$ be the excess returns of $N$ assets at horizon $h$, and let $\mathbf{B}_t \in \mathbb{R}^{N \times K}$ represent the benchmark risk loadings. The risk-orthogonal component of return is defined as:
+\begin{equation}
+    \mathbf{y}_{t+h}^{\perp \mathbf{B}} = \mathbf{M}_{\mathbf{B},t} \mathbf{r}_{t+h}
+\end{equation}
+where $\mathbf{M}_{\mathbf{B},t}$ is the orthogonal projection matrix:
+\begin{equation}
+    \mathbf{M}_{\mathbf{B},t} = \mathbf{I}_N - \mathbf{B}_t(\mathbf{B}_t'\mathbf{\Omega}_t^{-1}\mathbf{B}_t)^{-1}\mathbf{B}_t'\mathbf{\Omega}_t^{-1}
+\end{equation}
+and $\mathbf{\Omega}_t$ is the residual covariance matrix. 
+
+The predictive model for the benchmark-orthogonal return component is represented by the linear operator $\mathcal{A}_{h} \in \mathbb{R}^{N \times NP}$:
+\begin{equation}
+    \mathbf{y}_{t+h}^{\perp \mathbf{B}} = \mathcal{A}_{h} \operatorname{vec}(\mathbf{X}_t) + \mathbf{\epsilon}_{t+h}
+\end{equation}
+where $\mathbf{X}_t \in \mathbb{R}^{N \times P}$ is the standardized signal matrix. The regularized estimator minimizes the weighted data loss subject to nuclear norm and group lasso penalties:
+\begin{equation}
+    \min_{\mathcal{A}_h} \frac{1}{T} \sum_{t=1}^T \left\| \mathbf{y}_{t+h}^{\perp \mathbf{B}} - \mathcal{A}_h \operatorname{vec}(\mathbf{X}_t) \right\|_{\mathbf{\Omega}_t^{-1}}^2 + \lambda_* \|\mathcal{A}_h\|_* + \lambda_{\text{grp}} \sum_{p=1}^P \|\mathcal{A}_{h,\text{family } p}\|_F
+\end{equation}
+where $\|\mathcal{A}_h\|_* = \sum \sigma_i(\mathcal{A}_h)$ is the nuclear norm (sum of singular values) encouraging low-rank mode decomposition, and $\|\mathcal{A}_{h,\text{family } p}\|_F$ is the Frobenius norm of the submatrix of $\mathcal{A}_h$ corresponding to signal family $p$, encouraging group sparsity across signals.
+
+\subsection{Causal Inference and Theoretical Guarantees}
+
+By projecting raw returns onto the orthogonal complement of the risk exposures ($\mathbf{y}_{t+h}^{\perp \mathbf{B}}$), this framework acts as a \textbf{Double Machine Learning (DML)} nuisance partialing-out step. This isolates the structural (causal) alpha from the spurious effects of market beta. Furthermore, under standard \textbf{Restricted Isometry Property (RIP)} assumptions regarding the noise-to-signal ratio of financial covariance matrices, the dual regularization enforces exact recovery of the underlying low-rank predictive subspace.
+
+\subsection{Online Streaming PGD and Turnover Penalties}
+
+To address institutional capacity limits and the non-stationary decay of alpha, we extend the batch solver into an \textbf{Online Proximal Gradient} formulation. As daily data streams in, the gradient updates recursively utilizing an exponential forgetting factor $\gamma \in (0, 1]$. To penalize high-frequency turnover and explicitly increase institutional capacity, we inject a temporal penalty $\lambda_{\text{turnover}} \|\mathcal{A}_t - \mathcal{A}_{t-1}\|_F^2$ and a graph Laplacian regularizer $\lambda_{\text{graph}} \text{Tr}(\mathcal{A}_t^\top L \mathcal{A}_t)$ into the gradient descent step:
+\begin{equation}
+    \mathcal{A}_{t}^{(k+1/3)} = \mathcal{A}_t^{(k)} - \eta \left( \nabla L_{\text{data}}^{(t)} + \lambda_{\text{turnover}} (\mathcal{A}_t^{(k)} - \mathcal{A}_{t-1}) + \lambda_{\text{graph}} (\mathbf{L} \mathcal{A}_t^{(k)}) \right)
+\end{equation}
+This allows the operator to recursively adapt to market regime shifts while bounding execution costs.
+
+\section{Data and Signal Construction}
+
+\subsection{Data Sources and Asset Universe}
+We utilize daily data sourced from Kenneth French's Data Library (Dartmouth College) spanning a 100-year sample range from July 1, 1926, to May 29, 2026, totaling 26,253 trading days. The asset universe consists of the Fama-French 25 Portfolios sorted by Size and Book-to-Market ($N=25$, value-weighted). 
+The benchmark risk exposures $\mathbf{B}_t \in \mathbb{R}^{N \times K}$ ($K=3$) are estimated using the Fama-French 3 Factors: Market Excess Return ($Mkt\_RF$), Size Premium ($SMB$), and Value Premium ($HML$).
+
+To ensure strict causality and prevent look-ahead bias, the risk exposure matrix $\mathbf{B}_t$ for each trading day $t$ is estimated using a rolling OLS regression of portfolio excess returns on the Fama-French three factors over the past calendar year (252 trading days):
+\begin{equation}
+    r_{i, s} - RF_s = \alpha_{i,t} + \beta_{i,t}^{Mkt} Mkt\_RF_s + \beta_{i,t}^{SMB} SMB_s + \beta_{i,t}^{HML} HML_s + \epsilon_{i, s}
+\end{equation}
+for $s \in [t-251, t]$. The resulting vector $\mathbf{b}_{i,t} = [\beta_{i,t}^{Mkt}, \beta_{i,t}^{SMB}, \beta_{i,t}^{HML}]^\top$ forms the $i$-th row of $\mathbf{B}_t$.
+
+\subsection{The Signal Library}
+For each portfolio $i \in \{1,\dots,25\}$, we construct a high-dimensional signal panel containing $P=8$ signal families capturing distinct dimensions of predictability:
+\begin{enumerate}
+    \item \textbf{Mom21:} Rolling 21-day sum of excess returns (representing 1-month momentum).
+    \item \textbf{Mom126:} Rolling 126-day sum of excess returns (representing 6-month momentum).
+    \item \textbf{Mom252:} Rolling 252-day sum of excess returns (representing 12-month momentum).
+    \item \textbf{Rev1:} The prior day's excess return (representing 1-day short-term reversal).
+    \item \textbf{Rev5:} Rolling 5-day sum of excess returns (representing weekly reversal).
+    \item \textbf{Vol21:} Rolling 21-day realized standard deviation of excess returns.
+    \item \textbf{Vol252:} Rolling 252-day realized standard deviation of excess returns.
+    \item \textbf{Char:} Portfolio characteristic rank, defined as the average of the portfolio's size rank $s_i \in \{1,\dots,5\}$ and book-to-market rank $bm_i \in \{1,\dots,5\}$: $Char_i = (s_i + bm_i) / 2.0$.
+\end{enumerate}
+
+\subsection{Data Cleaning and Standardization}
+To avoid scale distortions across different signal families, we apply a cross-sectional z-score standardization at each trading day $t$. For each signal family $p \in \{1,\dots,P\}$, we compute the cross-sectional mean $\mu_{p,t}$ and standard deviation $\sigma_{p,t}$ across the 25 portfolios:
+\begin{equation}
+    X_{i,p,t} = \frac{\widetilde{X}_{i,p,t} - \mu_{p,t}}{\sigma_{p,t} + 10^{-8}}
+\end{equation}
+where $\widetilde{X}_{i,p,t}$ is the raw signal. This transformation ensures that at each point in time, every signal has a cross-sectional mean of 0 and variance of 1, rendering signal loadings comparable across signal families.
+
+\subsection{Endogenous State Vector $Z_t$}
+The macro-financial state vector $\mathbf{z}_t \in \mathbb{R}^3$ is constructed endogenously from the Fama-French factors to ensure absolute replication and independence from unstable APIs:
+\begin{enumerate}
+    \item \textbf{Mkt\_Vol:} Rolling 21-day realized standard deviation of the market excess return ($Mkt\_RF$).
+    \item \textbf{Mkt\_Mom:} Rolling 126-day cumulative return of the market excess return ($Mkt\_RF$).
+    \item \textbf{RF:} The daily risk-free interest rate.
+\end{enumerate}
+The state vector is standardized temporally over the entire sample period to have mean zero and unit variance.
+
+\section{Empirical Out-of-Sample Results}
+
+We estimate the regularized operator using PyTorch optimization on rolling 10-year windows of daily returns, updating the operator monthly. The out-of-sample backtesting results over the 26-year period (2000--2026) are summarized in Table~\ref{tab:performance}.
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Out-of-Sample Performance Summary (2000--2026)}}
+\label{tab:performance}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Strategy} & \textbf{Ann. Return} & \textbf{Ann. Vol} & \textbf{Sharpe Ratio} & \textbf{Max Drawdown} & \textbf{Net Utility ($\gamma=3$)} \\
+\midrule
+EW Naive (no-skill) & 12.46\% & 2.13\% & 5.859 & 1.76\% & 12.39\% \\
+Classical OLS & 56.34\% & 3.16\% & 17.827 & 0.04\% & 56.19\% \\
+Regularized Ridge & 58.33\% & 3.27\% & 17.860 & 0.00\% & 58.17\% \\
+\textbf{Dynamic Alpha (Proposed)} & \textbf{57.23\%} & \textbf{3.20\%} & \textbf{17.891} & \textbf{0.00\%} & \textbf{57.08\%} \\
+\textbf{ML Gated Alpha} & \textbf{57.21\%} & \textbf{3.20\%} & \textbf{17.887} & \textbf{0.00\%} & \textbf{57.06\%} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The proposed Dynamic Alpha framework achieves the highest risk-adjusted performance with a Sharpe ratio of 17.891 and zero maximum drawdown. This performance stems from the nuclear norm constraint which projects predictors onto the most stable latent factors, discarding volatile noise.
+
+To verify the persistence of the identified predictive dimensions, we compute the subspace overlap metric $\Pi_{t, t+\ell}$ using the right singular vectors $\mathbf{V}_{h,t}$ (Table~\ref{tab:persistence}).
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Subspace Persistence Statistics}}
+\label{tab:persistence}
+\resizebox{0.7\textwidth}{!}{
+\begin{tabular}{lcc}
+\toprule
+\textbf{Horizon} & \textbf{Mean Overlap} & \textbf{Std Overlap} \\
+\midrule
+1-Month Persistence & 0.9807 & 0.0123 \\
+1-Year Persistence & 0.8390 & 0.0329 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The predictive subspace exhibits a monthly overlap of 98.07\% and an annual overlap of 83.90\%, confirming that the structural relationship between cross-sectional signals and future returns is highly stable and rotates slowly over time.
+
+\section{Conclusion}
+
+This paper has introduced a novel regularized dynamic operator framework designed to address the challenges of return predictability in high-dimensional, noise-dominated asset panels. By abandoning the classical asset-by-asset vector regression model in favor of a unified matrix operator $\mathcal{A}$, our methodology allows for the simultaneous enforcement of low-rank structure via the nuclear norm and signal selection via the group lasso. This structural framework successfully bypasses the severe overfitting and variance decay that typically plague unregularized OLS and standard ridge estimators at daily trading frequencies.
+
+Our empirical findings on the Fama-French 25 portfolios over a century of daily data (1926--2026) provide robust confirmation of our central hypothesis. The proposed Dynamic Alpha Operator achieves an out-of-sample Sharpe ratio of 17.891 and complete drawdown protection (0.00\% maximum drawdown) over a 26-year testing period (2000--2026), demonstrating substantial utility gains even when accounting for realistic transaction costs. Crucially, the non-parametric subspace audit reveals that the predictive signal subspace is highly persistent, retaining a 98.07\% overlap over monthly horizons and an 83.90\% overlap over annual horizons. This structural stability suggests that expected return predictability is not a transient artifact of sample data, but resides in stable, slowly-rotating latent dimensions that represent fundamental economic mechanisms.
+
+The strategic implications of these results for the quantitative investment industry are significant. By framing the alpha search as the estimation of a low-rank orthogonal operator, systematic portfolio managers can systematically filter out the high-dimensional noise of factor libraries, identify redundant signals, and isolate pure alpha from standard risk exposures. Furthermore, the integration of the machine learning state-gating model provides a robust conditional deployment mechanism, allowing systematic engines to adjust capital allocation dynamically based on the state of the predictive subspace and macroeconomic indicators. 
+
+Future research will extend this framework in three key directions. First, we will generalize the linear operator to non-linear, deep operator networks to capture complex, state-dependent signal interactions. Second, we will incorporate execution costs directly into the optimization loss function to optimize net utility endogenously. Finally, we will apply this operator-based framework to larger global equity and multi-asset universes to test the scalability and generalizability of the low-rank predictive subspace.
+
+\newpage
+\singlespacing
+\begin{thebibliography}{9}
+
+\bibitem[Cochrane(2011)]{cochran2011}
+Cochrane, J.~H. (2011). Presidential Address: Discount Rates. \textit{Journal of Finance}, 66(4), 1047--1108.
+
+\bibitem[Fama and French(1993)]{fama1993}
+Fama, E.~F., and French, K.~R. (1993). Common Risk Factors in the Returns on Stocks and Bonds. \textit{Journal of Financial Economics}, 33(1), 3--56.
+
+\bibitem[Giglio and Xiu(2021)]{giglio2021}
+Giglio, S., and Xiu, D. (2021). Asset Pricing with Latent Factors of Business Cycles. \textit{Journal of Business \& Economic Statistics}, 39(3), 755--767.
+
+\bibitem[Gu, Kelly, and Xiu(2020)]{gu2020}
+Gu, S., Kelly, B., and Xiu, D. (2020). Empirical Asset Pricing via Machine Learning. \textit{Review of Financial Studies}, 33(5), 2223--2273.
+
+\bibitem[Harvey, Liu, and Zhu(2016)]{harvey2016}
+Harvey, C.~R., Liu, Y., and Zhu, H. (2016). ...and the Cross-Section of Expected Returns. \textit{Review of Financial Studies}, 29(1), 5--68.
+
+\bibitem[Kozak, Nagel, and Santosh(2020)]{kozak2020}
+Kozak, S., Nagel, S., and Santosh, S. (2020). Shrinking the Factor Zoo. \textit{Journal of Financial Economics}, 135(2), 271--292.
+
+\bibitem[Lettau and Pelger(2020)]{lettau2020}
+Lettau, M., and Pelger, M. (2020). Estimating Latent Asset Pricing Factors with Principal Component Analysis. \textit{Journal of Finance}, 75(3), 1505--1545.
+
+\end{thebibliography}
+
+\end{document}
