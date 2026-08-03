@@ -296,10 +296,25 @@ def main():
     
     avg_turnover = np.mean(turnover_advanced) * 100.0
     
-    print("\n" + "="*50)
-    print("Advanced Methodologies Backtest Results")
-    print("="*50)
-    print(f"Online Dynamic Operator | Sharpe: {sharpe_adv:.2f} | Avg Daily Turnover: {avg_turnover:.2f}%")
+    # --- Strategy Capacity ($AUM) Calculator ---
+    # Assume a market environment with a Portfolio Average Daily Volume (ADV) of $5 Billion
+    # and a maximum safe participation rate of 5% (to prevent market impact).
+    portfolio_adv_usd = 5_000_000_000
+    max_participation_rate = 0.05
+    daily_traded_allowance = portfolio_adv_usd * max_participation_rate
+    
+    turnover_decimal = np.mean(turnover_advanced)
+    if turnover_decimal > 1e-6:
+        strategy_capacity_usd = daily_traded_allowance / turnover_decimal
+    else:
+        strategy_capacity_usd = float('inf')
+        
+    capacity_str = f"${strategy_capacity_usd / 1e6:.2f} Million" if strategy_capacity_usd < 1e9 else f"${strategy_capacity_usd / 1e9:.2f} Billion"
+
+    print("\n" + "="*80)
+    print("Advanced Methodologies Backtest Results (Institutional Capacity Mode)")
+    print("="*80)
+    print(f"Online Dynamic Operator | Sharpe: {sharpe_adv:.2f} | Avg Daily Turnover: {avg_turnover:.2f}% | Max AUM Capacity: {capacity_str}")
     print(f"EW Naive Baseline       | Sharpe: {sharpe_base:.2f}")
     
     plt.figure(figsize=(10, 6))
