@@ -26,3 +26,5 @@ code/
 # Local model registries (private model binaries)
 model_registry/
 examples/model_registry/
+
+*.tex
