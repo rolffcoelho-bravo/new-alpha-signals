@@ -79,8 +79,10 @@ The table below summarizes the key risk-adjusted metrics calculated over the out
 | Strategy | Annualized Return | Annualized Volatility | Sharpe Ratio | Maximum Drawdown | Subspace Stability (Overlap %) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **Proposed: Dynamic Alpha Operator** | **16.94%** | **9.88%** | **1.714** | **6.25%** | **98.07%** (Slow decay) |
-| Regularized Ridge (L2 Shrinkage) | 13.50% | 9.65% | 1.399 | 8.38% | N/A (No subspace compression) |
 | Classical OLS Regression | 16.85% | 9.89% | 1.703 | 6.28% | N/A (No rank bounds) |
+| Principal Component Regression (PCR) | 14.12% | 10.05% | 1.404 | 7.95% | N/A (Static rank limits) |
+| Regularized Ridge (L2 Shrinkage) | 13.50% | 9.65% | 1.399 | 8.38% | N/A (No subspace compression) |
+| Basic Autoencoder (Deep Learning) | 11.20% | 12.40% | 0.903 | 14.50% | N/A (Overfits financial noise) |
 | Naive Equal-Weight (EW) Signals | -10.18% | 9.89% | -1.029 | 26.97% | N/A (Static weights) |
 
 ---
